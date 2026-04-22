@@ -1,0 +1,12 @@
+table1:
+  name:
+    first: Peter
+    middle: Richard
+    last: Smith
+  bdate: 19/11/56
+  NIE: 12345678Z
+table2:
+  address:
+    street: "123 abc"
+    numb: 25B
+    city: "abc town"

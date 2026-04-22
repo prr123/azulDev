@@ -1,0 +1,16 @@
+db: testdb
+dbuser: testdbuser
+Person:
+    id: [serial, 'primary key']
+    first: [varchar(15)]
+    middle: [varchar(15)]
+    last: [varchar(15)]
+    bdate: [date]
+    NIE: [varchar(15), unique]
+    email: [varchar(15), unique]
+Notes:
+    id: [serial, 'primary key']
+    pid: [int]
+    date: [date]
+    content: [text]
+    edited: [date]

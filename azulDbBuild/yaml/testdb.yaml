@@ -1,0 +1,18 @@
+db: testdb
+dbuser: testdbuser
+Person:
+    seqId: true
+    first: Peter
+    middle: Richard
+    last: Smith
+    bdate: 19/11/56
+    NIE: 12345678Z
+    address:
+      street: "123 abc"
+      numb: 25B
+      city: "abc town"
+Notes:
+  date: 1/1/26
+  content: "hello new info
+more to say"
+  edited: 123
