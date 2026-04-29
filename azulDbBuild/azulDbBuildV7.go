@@ -416,7 +416,7 @@ type dbObj struct {
 //	fmt.Println("**** End Tables ******")
 
 
-	goBuf.WriteString("func DbInit() (dbPool *pgxpool.Pool, err error) {\n")
+	goBuf.WriteString("func DbInit(dbg bool) (db *dbObj, err error) {\n")
 
 	dbconStr := fmt.Sprintf("host=/var/run/postgresql user=azuldbadmin dbname=%s", dbNam)
 
@@ -425,9 +425,11 @@ type dbObj struct {
 	goBuf.WriteString(conStr)
 
     init := `
-    dbPool, err = pgxpool.New(context.Background(), dbConnStr)
+	dbctx := context.Background()
+    dbPool, err := pgxpool.New(context.Background(), dbConnStr)
     if err != nil {return nil, fmt.Errorf("DbInit: Unable to create pool connection: %v\n", err)}
-    return dbPool, nil
+	dbx := dbObj {dbg: dbg, dbPool: dbPool, dbctx: dbctx}
+    return &dbx , nil
 }
 `
     goBuf.WriteString(init)
@@ -561,8 +563,38 @@ type dbObj struct {
 	goBuf.WriteString("    }\n")
 	goBuf.WriteString("    if cndCnt > 0 {condStr = \" where \" + condStr}\n")
 	goBuf.WriteString("\n")
-	goBuf.WriteString("    q:= fmt.Sprintf(\"select %s from %s%s;\",kval.String()[1:], tblNam, condStr)\n")
-	goBuf.WriteString("    if dbg {fmt.Printf(\"info dbg -- q: %s\\n\",q)}\n")
+	goBuf.WriteString("    selStr:= fmt.Sprintf(\"select %s from %s%s;\",kval.String()[1:], tblNam, condStr)\n")
+	goBuf.WriteString("    if dbg {fmt.Printf(\"info dbg -- q: %s\\n\",selStr)}\n")
+/*
+	newq := `
+var jsonString string
+newq := `
+    SELECT json_agg(row_to_json(t)) 
+    FROM (
+        SELECT id, name, email FROM users
+    ) t
+`
+err := conn.QueryRow(ctx, query).Scan(&jsonString)
+`
+	qStr := `
+	selRows, err := dbPool.Query(dbctx, selStr)
+	if err != nil {t.Errorf("select query failed: %v\n", err)}
+	defer selRows.Close()
+		colCnt:=-1
+		for crows.Next() {
+			colnam := ""
+			coltyp := ""
+			if err := crows.Scan(&colnam,&coltyp); err != nil {
+				t.Errorf("Col row scan failed: %v\n", err)
+				continue
+			}
+			colCnt++
+//			tblnam = append(tblnam, tableName)
+			fmt.Printf("-%d: %s %s\n", colCnt, colnam, coltyp)
+		}
+	`
+*/
+
 	goBuf.WriteString("    res = \"select\"\n")
 	goBuf.WriteString("    return res, nil\n")
 
@@ -613,7 +645,7 @@ import (
 //    "os"
     "fmt"
 	"strings"
-	"context"
+//	"context"
 	"testing"
 
 
@@ -628,9 +660,11 @@ import (
 	tstInit := "\nfunc TestInitDb(t *testing.T) {\n"
 	goBuf.WriteString(tstInit)
 	goBuf.WriteString("\n")
-	goBuf.WriteString("  dbPool,err := DbInit()\n")
+	goBuf.WriteString("  db, err := DbInit(true)\n")
 	goBuf.WriteString("  if err != nil {t.Errorf(\"error -- could not connect to pool!\")}\n")
-	goBuf.WriteString("  defer dbPool.Close()\n")
+	goBuf.WriteString("  defer db.dbPool.Close()\n")
+	goBuf.WriteString("  dbPool := db.dbPool\n")
+
 	goBuf.WriteString("  //check tables\n")
 	query := `
 		SELECT table_name 
@@ -642,7 +676,7 @@ import (
 	goBuf.WriteString(tblqc)
 
 	query2 := `
-	dbctx := context.Background()
+	dbctx := db.dbctx
 	tblnam := make([]string, 0, 24)
 	rows, err := dbPool.Query(dbctx, tblq)
 	if err != nil {t.Errorf("table query failed: %v\n", err)}
@@ -694,7 +728,6 @@ import (
 //			tblnam = append(tblnam, tableName)
 			fmt.Printf("-%d: %s %s\n", colCnt, colnam, coltyp)
 		}
-
 	}
 `
 	goBuf.WriteString(colStr)
@@ -705,11 +738,11 @@ import (
 	tstAdd := "\nfunc TestTblCmd(t *testing.T) {\n"
 	goBuf.WriteString(tstAdd)
 	goBuf.WriteString("\n")
-	goBuf.WriteString("  dbPool,err := DbInit()\n")
+	goBuf.WriteString("  db, err := DbInit(true)\n")
 	goBuf.WriteString("  if err != nil {t.Errorf(\"error -- could not connect to pool!\")}\n")
-	goBuf.WriteString("  defer dbPool.Close()\n")
+	goBuf.WriteString("  defer db.dbPool.Close()\n")
 
-	goBuf.WriteString("  db := dbObj {dbg:true, dbPool: dbPool, dbctx: context.Background()}\n")
+//	goBuf.WriteString("  db := dbObj {dbg:true, dbPool: dbPool, dbctx: context.Background()}\n")
 	goBuf.WriteString("  dbg := db.dbg\n\n")
 
 	goBuf.WriteString("  // db add\n")
