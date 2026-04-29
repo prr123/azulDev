@@ -15,7 +15,8 @@
 // V6 create arrays for tables
 //
 // V7 change table cmd string
-//
+// -- create test json string
+// --         js build
 
 package main
 
@@ -158,6 +159,14 @@ func main() {
 
 	err = db.buildGoTestCode(tables)
 	if err != nil {log.Fatalf("error -- buildGoTestCode: %v\n", err)}
+
+	err = db.buildAzulCode(tables)
+	if err != nil {log.Fatalf("error -- buildGoCode: %v\n", err)}
+
+	err = db.buildAzulTestCode(tables)
+	if err != nil {log.Fatalf("error -- buildGoTestCode: %v\n", err)}
+
+
 
 	fmt.Println("*** success azulDbBuild ***")
 }
@@ -369,15 +378,6 @@ type dbObj struct {
 
 }
 `
-/*
-type dbObj struct {
-    dbg bool
-    sit map[string]any
-    dbConn *pgx.Conn
-    sqlFil *os.File
-    base string
-}
-*/
 	goBuf.WriteString(tblStr)
 
 	goBuf.WriteString("\n// ****** Tables ********\n")
@@ -467,7 +467,7 @@ type dbObj struct {
 
 
 	// add data to table
-	goBuf.WriteString("\nfunc (db *dbObj) TblCmd(jsonStr string)(err error) {\n")
+	goBuf.WriteString("\nfunc (db *dbObj) TblCmd(jsonStr string)(res string, err error) {\n")
 	goBuf.WriteString("\n")
 
 	goBuf.WriteString("  var kval, val, upd strings.Builder\n")
@@ -475,31 +475,33 @@ type dbObj struct {
 	goBuf.WriteString("  val.Grow(256)\n")
 	goBuf.WriteString("  upd.Grow(256)\n")
 
-	goBuf.WriteString("  if db == nil {return fmt.Errorf(\"no dbObj found!\")}\n")
+	goBuf.WriteString("  if db == nil {return res, fmt.Errorf(\"no dbObj found!\")}\n")
 	goBuf.WriteString("  dbg:=db.dbg\n")
 	goBuf.WriteString("  jsMap := make(map[string]any)\n")
 	goBuf.WriteString("  err = json.Unmarshal([]byte(jsonStr), &jsMap)\n")
-	goBuf.WriteString("  if err != nil {return fmt.Errorf(\"Unmarshal json: %v\", err)}\n")
+	goBuf.WriteString("  if err != nil {return res, fmt.Errorf(\"Unmarshal json: %v\", err)}\n")
 	goBuf.WriteString("  if dbg {fmt.Printf(\"info dbg -- jsonMap: %d\\n\", len(jsMap))}\n")
 	goBuf.WriteString("  tblNam, ok := jsMap[\"table\"]\n")
-	goBuf.WriteString("  if !ok {return fmt.Errorf(\"no table name found!\")}\n")
+	goBuf.WriteString("  if !ok {return res, fmt.Errorf(\"no table name found!\")}\n")
 	goBuf.WriteString("  if dbg {fmt.Printf(\"info dbg -- table name: %s\\n\", tblNam.(string))}\n")
 	goBuf.WriteString("  cmdStr, ok := jsMap[\"cmd\"]\n")
-	goBuf.WriteString("  if !ok {return fmt.Errorf(\"no cmd found!\")}\n")
+	goBuf.WriteString("  if !ok {return res, fmt.Errorf(\"no cmd found!\")}\n")
 	goBuf.WriteString("  if dbg {fmt.Printf(\"info dbg -- cmd name: %s\\n\", cmdStr.(string))}\n")
 
 	goBuf.WriteString("  flds, ok := jsMap[\"fields\"].(map[string]any)\n")
-	goBuf.WriteString("  if !ok {return fmt.Errorf(\"fields not found!\")}\n")
+	goBuf.WriteString("  if !ok {return res, fmt.Errorf(\"fields not found!\")}\n")
 	goBuf.WriteString("  if dbg {fmt.Printf(\"info dbg -- fld map name: %v\\n\", flds)}\n")
 
 	goBuf.WriteString("  cond, ok := jsMap[\"cond\"].(map[string]any)\n")
-//	goBuf.WriteString("  if !ok {return fmt.Errorf(\"condition not found!\")}\n")
+//	goBuf.WriteString("  if !ok {return res, fmt.Errorf(\"condition not found!\")}\n")
 	goBuf.WriteString("  if dbg {fmt.Printf(\"info dbg -- cond: %v\\n\", cond)}\n")
 
 
 	goBuf.WriteString("  switch cmdStr {\n")
 
 	goBuf.WriteString("  case \"add\":\n")
+	goBuf.WriteString("    kval.Reset()\n")
+	goBuf.WriteString("    val.Reset()\n")
 	goBuf.WriteString("    for k, v := range flds {\n")
 	goBuf.WriteString("      kval.WriteString(\",\"+k)\n")
 	goBuf.WriteString("      vstr := fmt.Sprintf(\",'%s'\",v)\n")
@@ -507,16 +509,17 @@ type dbObj struct {
 	goBuf.WriteString("    }\n")
 	goBuf.WriteString("  q:= fmt.Sprintf(\"insert into %s (%s) values (%s);\",tblNam, kval.String()[1:], val.String()[1:])\n")
 	goBuf.WriteString("  if dbg {fmt.Printf(\"info dbg -- q: %s\\n\",q)}\n")
+	goBuf.WriteString("    res = \"add\"\n")
+	goBuf.WriteString("    return res, nil\n")
 	goBuf.WriteString("\n")
+
 	goBuf.WriteString("  case \"upd\":\n")
-
-	goBuf.WriteString("    if cond == nil {return fmt.Errorf(\"no cond!\")}\n")
-
-
+	goBuf.WriteString("    if cond == nil {return res, fmt.Errorf(\"no cond!\")}\n")
+//	goBuf.WriteString("    kval.Reset()")
+	goBuf.WriteString("    upd.Reset()\n")
 	goBuf.WriteString("    cndCnt := 0\n")
 	goBuf.WriteString("    condStr := \"\"\n")
 	goBuf.WriteString("    for ck, cv := range cond {\n")
-
 	goBuf.WriteString("      andStr :=\"\"\n")
 	goBuf.WriteString("      if cndCnt > 0 {andStr = \" and \"}\n")
 	goBuf.WriteString("      cStr := fmt.Sprintf(\"%s = '%s'\",ck,cv)\n")
@@ -525,22 +528,47 @@ type dbObj struct {
 	goBuf.WriteString("      cndCnt++\n")
 	goBuf.WriteString("    }\n")
 
-/*
-	goBuf.WriteString("    idStr, ok := jsMap[\"id\"]\n")
-	goBuf.WriteString("    if !ok {return fmt.Errorf(\"upd no id!\")}\n")
-	goBuf.WriteString("    id, err2 := strconv.Atoi(idStr)\n")
-	goBuf.WriteString("    if err2 != nil {return fmt.Errorf(\"id is not int!\")}\n")
-*/
-
 	goBuf.WriteString("    for k, v := range flds {\n")
 	goBuf.WriteString("      vstr := fmt.Sprintf(\",%s = '%s'\",k, v)\n")
 	goBuf.WriteString("      upd.WriteString(vstr)\n")
 	goBuf.WriteString("    }\n")
 	goBuf.WriteString("    q:= fmt.Sprintf(\"update %s set %s where %s;\",tblNam, upd.String()[1:], condStr)\n")
 	goBuf.WriteString("    if dbg {fmt.Printf(\"info dbg -- q: %s\\n\",q)}\n")
+	goBuf.WriteString("    res = \"update\"\n")
+	goBuf.WriteString("    return res, nil\n")
+	goBuf.WriteString("\n")
+
+	goBuf.WriteString("  case \"list\":\n")
+
+	goBuf.WriteString("    kval.Reset()\n")
+	goBuf.WriteString("    val.Reset()\n")
+	goBuf.WriteString("    for k, _ := range flds {\n")
+	goBuf.WriteString("      kval.WriteString(\",\"+k)\n")
+//	goBuf.WriteString("      vstr := fmt.Sprintf(\",'%s'\",v)\n")
+//	goBuf.WriteString("      val.WriteString(vstr)\n")
+	goBuf.WriteString("    }\n")
+	goBuf.WriteString("    if len(flds) == 0 {kval.WriteString(\"-*\")}\n")
+
+	goBuf.WriteString("    cndCnt := 0\n")
+	goBuf.WriteString("    condStr := \"\"\n")
+	goBuf.WriteString("    for ck, cv := range cond {\n")
+	goBuf.WriteString("      andStr :=\"\"\n")
+	goBuf.WriteString("      if cndCnt > 0 {andStr = \" and \"}\n")
+	goBuf.WriteString("      cStr := fmt.Sprintf(\"%s = '%s'\",ck,cv)\n")
+	goBuf.WriteString("      if ck == \"id\" { cStr = fmt.Sprintf(\"%s = %s\",ck,cv)}\n")
+	goBuf.WriteString("      condStr = condStr + andStr + cStr\n")
+	goBuf.WriteString("      cndCnt++\n")
+	goBuf.WriteString("    }\n")
+	goBuf.WriteString("    if cndCnt > 0 {condStr = \" where \" + condStr}\n")
+	goBuf.WriteString("\n")
+	goBuf.WriteString("    q:= fmt.Sprintf(\"select %s from %s%s;\",kval.String()[1:], tblNam, condStr)\n")
+	goBuf.WriteString("    if dbg {fmt.Printf(\"info dbg -- q: %s\\n\",q)}\n")
+	goBuf.WriteString("    res = \"select\"\n")
+	goBuf.WriteString("    return res, nil\n")
+
 	goBuf.WriteString("\n")
 	goBuf.WriteString("  default:\n")
-	goBuf.WriteString("  return fmt.Errorf(\"invalid cmd: %s\", cmdStr)\n")
+	goBuf.WriteString("  return res, fmt.Errorf(\"invalid cmd: %s\", cmdStr)\n")
 	goBuf.WriteString("  }\n")
 
 
@@ -551,7 +579,7 @@ type dbObj struct {
 
 	
 
-	goBuf.WriteString("  return nil\n")
+	goBuf.WriteString("  return res, nil\n")
 	goBuf.WriteString("}\n")
 
 
@@ -682,27 +710,42 @@ import (
 	goBuf.WriteString("  defer dbPool.Close()\n")
 
 	goBuf.WriteString("  db := dbObj {dbg:true, dbPool: dbPool, dbctx: context.Background()}\n")
-	goBuf.WriteString("  dbg := db.dbg\n")
+	goBuf.WriteString("  dbg := db.dbg\n\n")
 
+	goBuf.WriteString("  // db add\n")
 	jsonAdd := `{"table": "person", "cmd":"add", "fields": {"first": "peter", "middle": "rich", "last":"Smith", "nie":"1234561A", "email": "peter@test.com"}}`
 	jsonStr := fmt.Sprintf("  jsonStr := `%s`\n", jsonAdd)
 	goBuf.WriteString(jsonStr)
 	goBuf.WriteString("  if dbg {fmt.Printf(\"info dbg -- json: %s\\n\",jsonStr)}\n")
 
-	goBuf.WriteString("    err = db.TblCmd(jsonStr)\n")
-	goBuf.WriteString("    if err!=nil {t.Errorf(\"addDb: %v\", err) }\n")
+	goBuf.WriteString("  res, err := db.TblCmd(jsonStr)\n")
+	goBuf.WriteString("  if err != nil {t.Errorf(\"TblCmd: %v\", err) }\n\n")
+	goBuf.WriteString("  if dbg {fmt.Printf(\"info dbg -- res add: %s\\n\", res)}\n")
 
+	goBuf.WriteString("  // db update\n")
 	jsonUpd := `{"table": "person", "cmd":"upd", "fields":{"first": "peter2", "last":"Smith2"}, "cond": {"id":"2"}}`
 	jsonStr = fmt.Sprintf("  jsonStr = `%s`\n", jsonUpd)
 	goBuf.WriteString(jsonStr)
 	goBuf.WriteString("  if dbg {fmt.Printf(\"info dbg -- json: %s\\n\",jsonStr)}\n")
 
-	goBuf.WriteString("  err = db.TblCmd(jsonStr)\n")
-	goBuf.WriteString("  if err!=nil {t.Errorf(\"addDb: %v\", err) }\n")
+	goBuf.WriteString("  res, err = db.TblCmd(jsonStr)\n")
+	goBuf.WriteString("  if err != nil {t.Errorf(\"TblCmd: %v\", err) }\n\n")
+	goBuf.WriteString("  if dbg {fmt.Printf(\"info dbg -- res upd: %s\\n\", res)}\n")
 
+	goBuf.WriteString("  // db list\n")
+	jsonList := `{"table": "person", "cmd":"list", "fields":{"first": "", "last":""}, "cond": {}}`
+	jsonStr = fmt.Sprintf("  jsonStr = `%s`\n", jsonList)
+	goBuf.WriteString(jsonStr)
+	goBuf.WriteString("  if dbg {fmt.Printf(\"info dbg -- json: %s\\n\",jsonStr)}\n")
+
+	goBuf.WriteString("  res, err = db.TblCmd(jsonStr)\n")
+	goBuf.WriteString("  if err != nil {t.Errorf(\"TblCmd: %v\", err) }\n\n")
+	goBuf.WriteString("  if dbg {fmt.Printf(\"info dbg -- res list: %s\\n\", res)}\n")
+
+	goBuf.WriteString("  // test unmarshal\n")
 	goBuf.WriteString("  jsMap := make(map[string]any, 24)\n")
 	goBuf.WriteString("  err1 := json.Unmarshal([]byte(jsonStr), &jsMap)\n")
-	goBuf.WriteString("  if err1 != nil {t.Errorf(\"Unmarshal %v \", err1)}\n")
+	goBuf.WriteString("  if err1 != nil {t.Errorf(\"Unmarshal %v \", err1)}\n\n")
 
 	goBuf.WriteString("}\n")
 
@@ -710,17 +753,66 @@ import (
 	return nil
 }
 
-func (db *dbObj) ParseTables() (tables []table, err error){
+func (db *dbObj) buildAzulCode(tables []table) (err error) {
 
 //	dbg := db.dbg
+	jsBuf := new(bytes.Buffer)
+	jsBuf.Grow(4096)
+
+	dbnam, ok := db.sit["db"]
+	if !ok {return fmt.Errorf("no db name found!")}
+	dbNam := dbnam.(string)
+
+	jsFilnam :=  "dbgo/azul_" + dbNam + ".js"
+    jsFil, err := os.Create(jsFilnam)
+    if err != nil {return fmt.Errorf("creating azul js file: %v!\n", err)}
+    defer jsFil.Close()
+
+
+	top := fmt.Sprintf("// %s %s\n", db.base, dbNam)
+	jsBuf.WriteString(top)
+	top = fmt.Sprintf("let %s = {\n", db.base)
+	jsBuf.WriteString(top)
+
+	jsBuf.WriteString("};\n")
+
+	jsBuf.WriteTo(jsFil)
+	return nil
+}
+
+func (db *dbObj) buildAzulTestCode(tables []table) (err error) {
+
+	jsBuf := new(bytes.Buffer)
+	jsBuf.Grow(4096)
+
+	dbnam, ok := db.sit["db"]
+	if !ok {return fmt.Errorf("no db name found!")}
+	dbNam := dbnam.(string)
+
+	jsFilnam :=  "dbgo/azul_" + dbNam + "_test.js"
+    jsFil, err := os.Create(jsFilnam)
+    if err != nil {return fmt.Errorf("creating azul js test file: %v!\n", err)}
+    defer jsFil.Close()
+
+	top := fmt.Sprintf("// %s %s\n", db.base, dbNam)
+	jsBuf.WriteString(top)
+
+	jsBuf.WriteTo(jsFil)
+	return nil
+}
+
+
+func (db *dbObj) ParseTables() (tables []table, err error){
+
+	dbg := db.dbg
 	mp := db.sit
 
 	for k,v := range mp {
 		typ := reflect.TypeOf(v)
 		nam := typ.Name()
 		knd:= typ.Kind()
-		fmt.Printf("k: %s nam: %s kind: %d v: %v\n", k, nam, knd, v)
-		//test for map
+		if dbg {fmt.Printf("k: %s nam: %s kind: %d v: %v\n", k, nam, knd, v)}
+		//test  for array
 		switch knd {
 		case 21: 
 			// table
@@ -730,26 +822,35 @@ func (db *dbObj) ParseTables() (tables []table, err error){
 				typs := reflect.TypeOf(vs)
 				nams := typs.Name()
 				knds:= typs.Kind()
-				fmt.Printf("  ks: %s %s nam: %s kind: %d vs: %v\n", ks, knds.String(), nams, knds, vs)
-				switch knds {
+				if dbg {fmt.Printf("  ks: %s %s nam: %s kind: %d vs: %v\n", ks, knds.String(), nams, knds, vs)}
 
+				switch knds {
 				case 23:
 					fld := field{name:ks}
 					ar := vs.([]any)
-					fmt.Printf("  %v: len: %d\n", ar, len(ar))
+					if dbg {fmt.Printf("  %v: len: %d\n", ar, len(ar))}
 					elChar := make([]string,len(ar))
+
+/*
 					for ak, av := range ar {
             			switch vv := av.(type) {
             			case string:
-                			fmt.Printf("    %v: is string - %q\n", ak, vv)
+ 	               			if dbg {fmt.Printf("    %v: is string - %q\n", ak, vv)}
 							elChar[ak] = vv
             			case int:
-                			fmt.Printf("    %v: is int - %q\n", ak, vv)
+                			if dbg {fmt.Printf("    %v: is int - %q\n", ak, vv)}
+//							elChar[ak] = vv
             			default:
-                			fmt.Printf("    %v unknown type", ak)
-//                WTHisThisJSON(v)
+                			if dbg {fmt.Printf("    %v unknown type", ak)}
+							typeName := reflect.TypeOf(av).String()
+							return tables, fmt.Errorf("unknown typ in 2nd map: %s", typeName)
             			}
         			}
+*/
+					for ak, av := range ar {
+						elChar[ak] = av.(string)
+					}
+					// this reduces varchar(num) to varchar
 					fld.ptyp, _,_ = strings.Cut(elChar[0],"(")
 
 					fld.prop = elChar
