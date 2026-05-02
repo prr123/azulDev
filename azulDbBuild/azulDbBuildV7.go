@@ -479,6 +479,8 @@ type dbObj struct {
 
 	goBuf.WriteString("  if db == nil {return res, fmt.Errorf(\"no dbObj found!\")}\n")
 	goBuf.WriteString("  dbg:=db.dbg\n")
+	goBuf.WriteString("  dbPool:=db.dbPool\n")
+	goBuf.WriteString("  dbctx:=db.dbctx\n")
 	goBuf.WriteString("  jsMap := make(map[string]any)\n")
 	goBuf.WriteString("  err = json.Unmarshal([]byte(jsonStr), &jsMap)\n")
 	goBuf.WriteString("  if err != nil {return res, fmt.Errorf(\"Unmarshal json: %v\", err)}\n")
@@ -509,9 +511,14 @@ type dbObj struct {
 	goBuf.WriteString("      vstr := fmt.Sprintf(\",'%s'\",v)\n")
 	goBuf.WriteString("      val.WriteString(vstr)\n")
 	goBuf.WriteString("    }\n")
-	goBuf.WriteString("  q:= fmt.Sprintf(\"insert into %s (%s) values (%s);\",tblNam, kval.String()[1:], val.String()[1:])\n")
-	goBuf.WriteString("  if dbg {fmt.Printf(\"info dbg -- q: %s\\n\",q)}\n")
-	goBuf.WriteString("    res = \"add\"\n")
+	goBuf.WriteString("    q:= fmt.Sprintf(\"insert into %s (%s) values (%s) returning id\",tblNam, kval.String()[1:], val.String()[1:])\n")
+	goBuf.WriteString("    if dbg {fmt.Printf(\"info dbg -- q: %s\\n\",q)}\n")
+
+	goBuf.WriteString("    var newId int\n")
+	goBuf.WriteString("    err = dbPool.QueryRow(dbctx, q).Scan(&newId)\n")
+	goBuf.WriteString("    if err != nil {return res, fmt.Errorf(\"add db: %v\", err)}\n")
+
+	goBuf.WriteString("    res = fmt.Sprintf(\"{\\\"add\\\":\\\"%d\\\"}\", newId)\n")
 	goBuf.WriteString("    return res, nil\n")
 	goBuf.WriteString("\n")
 
@@ -536,7 +543,11 @@ type dbObj struct {
 	goBuf.WriteString("    }\n")
 	goBuf.WriteString("    q:= fmt.Sprintf(\"update %s set %s where %s;\",tblNam, upd.String()[1:], condStr)\n")
 	goBuf.WriteString("    if dbg {fmt.Printf(\"info dbg -- q: %s\\n\",q)}\n")
-	goBuf.WriteString("    res = \"update\"\n")
+	goBuf.WriteString("    cmdTag, err := dbPool.Exec(dbctx, q)\n")
+	goBuf.WriteString("    if err != nil {return res, fmt.Errorf(\"upd db: %v\", err)}\n")
+	goBuf.WriteString("    if dbg {fmt.Printf(\"info dbg -- rows: %d\\n\", cmdTag.RowsAffected())}\n")
+
+	goBuf.WriteString("    res = fmt.Sprintf(\"{\\\"update\\\":\\\"%d\\\"}\",cmdTag.RowsAffected())\n")
 	goBuf.WriteString("    return res, nil\n")
 	goBuf.WriteString("\n")
 
@@ -563,39 +574,16 @@ type dbObj struct {
 	goBuf.WriteString("    }\n")
 	goBuf.WriteString("    if cndCnt > 0 {condStr = \" where \" + condStr}\n")
 	goBuf.WriteString("\n")
-	goBuf.WriteString("    selStr:= fmt.Sprintf(\"select %s from %s%s;\",kval.String()[1:], tblNam, condStr)\n")
+	goBuf.WriteString("    selStr:= fmt.Sprintf(\"SELECT json_agg(row_to_json(t)) FROM (select %s from %s%s) t\",kval.String()[1:], tblNam, condStr)\n")
 	goBuf.WriteString("    if dbg {fmt.Printf(\"info dbg -- q: %s\\n\",selStr)}\n")
-/*
-	newq := `
-var jsonString string
-newq := `
-    SELECT json_agg(row_to_json(t)) 
-    FROM (
-        SELECT id, name, email FROM users
-    ) t
-`
-err := conn.QueryRow(ctx, query).Scan(&jsonString)
-`
-	qStr := `
-	selRows, err := dbPool.Query(dbctx, selStr)
-	if err != nil {t.Errorf("select query failed: %v\n", err)}
-	defer selRows.Close()
-		colCnt:=-1
-		for crows.Next() {
-			colnam := ""
-			coltyp := ""
-			if err := crows.Scan(&colnam,&coltyp); err != nil {
-				t.Errorf("Col row scan failed: %v\n", err)
-				continue
-			}
-			colCnt++
-//			tblnam = append(tblnam, tableName)
-			fmt.Printf("-%d: %s %s\n", colCnt, colnam, coltyp)
-		}
-	`
-*/
 
-	goBuf.WriteString("    res = \"select\"\n")
+	goBuf.WriteString("    var jsonOut []byte\n")
+
+	goBuf.WriteString("    err = dbPool.QueryRow(dbctx, selStr).Scan(&jsonOut)\n")
+
+	goBuf.WriteString("    if dbg {fmt.Printf(\"info dbg -- jsonOut: %s\\n\",jsonOut)}\n")
+
+	goBuf.WriteString("    res = string(jsonOut)\n")
 	goBuf.WriteString("    return res, nil\n")
 
 	goBuf.WriteString("\n")
