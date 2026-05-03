@@ -792,10 +792,96 @@ func (db *dbObj) buildAzulCode(tables []table) (err error) {
 
 	top := fmt.Sprintf("// %s %s\n", db.base, dbNam)
 	jsBuf.WriteString(top)
-	top = fmt.Sprintf("let %s = {\n", db.base)
-	jsBuf.WriteString(top)
 
-	jsBuf.WriteString("};\n")
+	jsBuf.WriteString("\n")
+	for i:=0; i< len(tables); i++ {
+		tblNam := tables[i].name
+		jsBuf.WriteString("// table: " + tblNam + "\n")
+		addStr := fmt.Sprintf("let %sAdd = {\n",tblNam)
+		jsBuf.WriteString(addStr)
+//		jsBuf.WriteString("\n")
+		sbut := `
+    subButObj: {
+        text: 'submit new',
+        style: {
+            display: 'block',
+            textAlign: 'center',
+            width: '200px',
+            margin: '20px auto',
+        },
+    },
+`
+		jsBuf.WriteString(sbut)
+		jsBuf.WriteString("\n")
+		jsBuf.WriteString("  subFun() {\n")
+		jsBuf.WriteString("// submit processing\n")
+		jsBuf.WriteString("  },\n")
+
+		jsBuf.WriteString("\n")
+		jsBuf.WriteString("  rendSubmit() {\n")
+		subCode:=`    const subDiv = document.createElement('div');
+    const subBut = new azulButton(this.subButObj);
+    this.subButEl = subBut.el;
+`
+		jsBuf.WriteString(subCode)
+		jsBuf.WriteString("    subBut.el.addEventListener('click', function() {")
+		sfun := fmt.Sprintf("%sAdd.subFunc(dbData.gridDiv.inpEls);},false);\n", tblNam)
+		jsBuf.WriteString(sfun)
+		subCode2 :=
+`    subDiv.appendChild(subBut.el);
+    return subDiv;
+`
+		jsBuf.WriteString(subCode2)
+		jsBuf.WriteString("  },\n")
+		jsBuf.WriteString("\n")
+
+		jsBuf.WriteString("  render() {\n")
+		jsBuf.WriteString("    const root = document.createElement('div');\n")
+		jsBuf.WriteString("// add content\n")
+        rcode:= fmt.Sprintf("    const subDiv = %sAdd.rendSubmit();\n", tblNam)
+		jsBuf.WriteString(rcode)
+		jsBuf.WriteString("    root.appendChild(subDiv);\n")
+		jsBuf.WriteString("    return root;\n")
+		jsBuf.WriteString("  },\n")
+
+		jsBuf.WriteString("  rendfun() {\n")
+		jsBuf.WriteString("    console.log('add click!');\n")
+		add2:= fmt.Sprintf("    const ldiv = %sAdd.render();\n    azul.rplDiv(dbMain.dbDat, ldiv);\n", tblNam)
+	    jsBuf.WriteString(add2)
+		jsBuf.WriteString("  },\n")
+		jsBuf.WriteString("};\n\n")
+
+		updStr := fmt.Sprintf("let %sUpd = {\n",tblNam)
+		jsBuf.WriteString(updStr)
+		jsBuf.WriteString("\n")
+
+		jsBuf.WriteString("  render() {\n")
+		jsBuf.WriteString("    const root = document.createElement('div');\n")
+		jsBuf.WriteString("// add content\n")
+		jsBuf.WriteString("    return root;\n")
+		jsBuf.WriteString("  },\n")
+
+		jsBuf.WriteString("  rendfun() {\n")
+		jsBuf.WriteString("    console.log('upd click!');\n")
+		upd2:= fmt.Sprintf("    const ldiv = %sUpd.render();\n    azul.rplDiv(dbMain.dbDat, ldiv);\n", tblNam)
+	    jsBuf.WriteString(upd2)
+		jsBuf.WriteString("  },\n")
+		jsBuf.WriteString("};\n\n")
+		lsStr := fmt.Sprintf("let %sList = {\n",tblNam)
+		jsBuf.WriteString(lsStr)
+		jsBuf.WriteString("\n")
+		jsBuf.WriteString("  render() {\n")
+		jsBuf.WriteString("    const root = document.createElement('div');\n")
+		jsBuf.WriteString("// add content\n")
+		jsBuf.WriteString("    return root;\n")
+		jsBuf.WriteString("  },\n")
+		jsBuf.WriteString("  rendfun() {\n")
+		jsBuf.WriteString("    console.log('list click!');\n")
+		ls2:= fmt.Sprintf("    const ldiv = %sList.render();\n    azul.rplDiv(dbMain.dbDat, ldiv);\n", tblNam)
+	    jsBuf.WriteString(ls2)
+		jsBuf.WriteString("  },\n")
+		jsBuf.WriteString("};\n\n")
+	}
 
 	jsBuf.WriteTo(jsFil)
 	return nil
