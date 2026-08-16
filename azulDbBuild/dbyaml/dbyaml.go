@@ -196,9 +196,6 @@ func PrintDb(db dbData) {
 
 func DbTest(db *dbData) (err error) {
 
-    var q strings.Builder
-    q.Grow(1024)
-    var tblExists bool
 
 	db.Dbg = true
 	bctx :=context.Background()
@@ -208,7 +205,20 @@ func DbTest(db *dbData) (err error) {
     dbConn, err := pgx.Connect(bctx, dbConnStr)
     if err != nil {return fmt.Errorf("error -- Unable to connect to database %s: %v\n", db.dbInfo.DB, err)}
     db.dbInfo.dbConn = dbConn
-	defer dbConn.Close(bctx)
+//	defer db.dbInfo.dbConn.Close(bctx)
+
+	return nil
+}
+
+func (db *dbData)TstTbls() (err error) {
+    var tblExists bool
+    var q strings.Builder
+    q.Grow(1024)
+
+	dbConn := db.dbInfo.dbConn
+	if dbConn == nil {return fmt.Errorf("no dbConn!")}
+
+	bctx := db.dbInfo.dbctx
 
 	// check wehter db tables exist
 	for _, tbl := range db.dbTbls {
@@ -258,6 +268,14 @@ func DbTest(db *dbData) (err error) {
 		if rows.Err() != nil {fmt.Errorf("Rows error: %v\n", rows.Err())}
 
 	}
+
+	// role
+	roleCnt := -1
+    roleQuery:= fmt.Sprintf("select count(*) FROM pg_roles WHERE rolname = '%s';", db.dbInfo.User)
+    err = dbConn.QueryRow(bctx, roleQuery).Scan(&roleCnt)
+    if err != nil {return fmt.Errorf(" db roleQuery %s failed: %v\n", roleQuery, err)}
+//    if dbg {fmt.Printf("info -- role count: %d\n", roleCnt)}
+
 	return nil
 }
 
@@ -288,18 +306,18 @@ func (db *dbData) RmTbls() (err error) {
     var q strings.Builder
     q.Grow(1024)
 
-	q.WriteString("drop table if exists ")
 //	query := "drop table if exists $1"
 
-	dbPool := db.dbInfo.dbPool
-	if dbPool == nil {return fmt.Errorf("no dbPool")}
+	dbConn := db.dbInfo.dbConn
+	if dbConn == nil {return fmt.Errorf("no dbConn")}
 
 	for _, tbl := range db.dbTbls {
-
+		q.Reset()
+		q.WriteString("drop table if exists ")
 		q.WriteString(strings.ToLower(tbl.name))
 		q.WriteString(";")
-		_, err = dbPool.Exec(db.dbInfo.dbctx, q.String())
-		if err != nil {return fmt.Errorf("drop tables: %v", err)}
+		_, err = dbConn.Exec(db.dbInfo.dbctx, q.String())
+		if err != nil {return fmt.Errorf("drop tables %s: %v", q.String(), err)}
 	}
 	return nil
 }
@@ -309,20 +327,26 @@ func (db *dbData) BldTbls() (err error) {
     var q strings.Builder
     q.Grow(1024)
 
-	dbPool := db.dbInfo.dbPool
-	if dbPool == nil {return fmt.Errorf("no dbPool")}
+	dbConn := db.dbInfo.dbConn
+	if dbConn == nil {return fmt.Errorf("no dbConn")}
 
-	q.WriteString("create table if not exists ")
 
 	for _, tbl := range db.dbTbls {
+		q.Reset()
+		q.WriteString("create table if not exists ")
 		q.WriteString(strings.ToLower(tbl.name))
 		q.WriteString(" (")
 		// fields
-
-
+		for i:=0; i<len(tbl.fldList); i++ {
+			q.WriteString(tbl.fldList[i])
+			q.WriteString(" ")
+			q.WriteString(tbl.propList[i])
+			if i<len(tbl.fldList)-1 {q.WriteString(",")}
+		}
 		q.WriteString(" );")
-		_, err = dbPool.Exec(db.dbInfo.dbctx, q.String())
-		if err != nil {return fmt.Errorf("build tables: %v", err)}
+//		if db.Dbg {fmt.Printf("q: %s\n", q.String())}
+        _, err := dbConn.Exec(db.dbInfo.dbctx, q.String())
+        if err != nil {return fmt.Errorf(" create table %s failed, query: >%s<: %v\n", tbl.name, q.String(), err)}
 	}
 
 	return nil

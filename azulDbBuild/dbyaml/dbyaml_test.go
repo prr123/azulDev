@@ -47,16 +47,36 @@ func Test_DbTest(t *testing.T) {
 	}
 }
 
-func Test_DbInit(t *testing.T) {
+func Test_DbTest2(t *testing.T) {
 
     yamlFilnam := "testDbAltV2"
     db, err := RdYaml(yamlFilnam)
     if err !=nil {t.Errorf("rdyaml failed: %v", err)}
 
-	err = DbInit(&db)
+	err = DbTest(&db)
     if err !=nil {
-		t.Errorf("DbInit failed: %v", err)
+		t.Errorf("DbTest failed: %v", err)
 	} else {
-		log.Printf("*** DbInit success ***\n")
+		log.Printf("*** DbTest success ***\n")
 	}
+
+	err = db.TstTbls()
+    if err !=nil {t.Errorf("TstTbls failed: %v", err)}
+
+	err = db.RmTbls()
+    if err !=nil {t.Errorf("RmTbls failed: %v", err)}
+}
+
+func Test_BldTbls(t *testing.T) {
+
+    yamlFilnam := "testDbAltV2"
+    db, err := RdYaml(yamlFilnam)
+    if err !=nil {t.Errorf("rdyaml failed: %v", err)}
+
+	err = DbTest(&db)
+    if err !=nil {t.Errorf("DbInit failed: %v", err)}
+
+	err = db.BldTbls()
+    if err !=nil {t.Errorf("BldTbls failed: %v", err)}
+
 }
