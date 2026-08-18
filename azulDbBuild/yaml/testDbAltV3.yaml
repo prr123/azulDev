@@ -1,0 +1,50 @@
+db: testdb
+dbuser: testdbuser
+dbl:
+  Person:
+    id:
+      typ: serial
+      att: ['primary key']
+    first:
+      typ: varchar(15)
+      att: ['not null']
+    middle:
+      typ: varchar(15)
+    last:
+      typ: varchar(15)
+    bdate:
+      typ: date
+    NIE:
+      typ: varchar(15)
+      att: [unique]
+    email:
+      typ: varchar(15)
+      att: [unique]
+  Notes:
+    id:
+      typ: serial
+      att: ['primary key']
+    pid:
+      typ: int
+    date:
+      typ: date
+    content:
+      typ: text
+      att: ['not null']
+    edited:
+      typ: date
+layout:
+  Person:
+    list:
+      RH: [id, first, middle, last, bdate,NIE, email]
+    add:
+      R1: [first, middle, last]
+      R2: [email]
+      R3: [bdate]
+      R4: [NIE]
+  Notes:
+    list:
+      R1: [edited, id]
+      R2: [content]
+    add:
+      R1: [content]

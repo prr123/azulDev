@@ -1,0 +1,32 @@
+db: testdb
+dbuser: testdbuser
+dbl:
+  Person:
+    id: [serial, 'primary key']
+    first: [varchar(15)]
+    middle: [varchar(15)]
+    last: [varchar(15)]
+    bdate: [date]
+    NIE: [varchar(15), unique]
+    email: [varchar(15), unique]
+  Notes:
+    id: [serial, 'primary key']
+    pid: [int]
+    date: [date]
+    content: [text]
+    edited: [date]
+layout:
+  Person:
+    list:
+      RH: [id, first, middle, last, bdate,NIE, email]
+    add:
+      R1: [first, middle, last]
+      R2: [email]
+      R3: [bdate]
+      R4: [NIE]
+  Notes:
+    list:
+      R1: [date. edited, id]
+      R2: [content]
+    add:
+      R1: [content]
