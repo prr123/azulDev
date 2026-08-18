@@ -35,7 +35,7 @@ func Test_rdyaml (t *testing.T) {
 
 func Test_DbTest(t *testing.T) {
 
-    yamlFilnam := "testDbAltV2"
+    yamlFilnam := "testDbAltV3"
     db, err := RdYaml(yamlFilnam)
     if err !=nil {t.Errorf("rdyaml failed: %v", err)}
 
@@ -69,7 +69,7 @@ func Test_DbTest2(t *testing.T) {
 
 func Test_BldTbls(t *testing.T) {
 
-    yamlFilnam := "testDbAltV2"
+    yamlFilnam := "testDbAltV3"
     db, err := RdYaml(yamlFilnam)
     if err !=nil {t.Errorf("rdyaml failed: %v", err)}
 

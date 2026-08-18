@@ -100,7 +100,22 @@ func RdYaml (yFil string) (db dbData, err error) {
 		flds := make([]fld, 0, 24)
 		for fnam, fldv := range fldMap {
 			fldEl := fld {fldnam: fnam}
-			fmt.Printf("  -- fnam: %s fldv: %v\n", fnam, fldv)
+			fldvMap := fldv.(map[string]any)
+//			fmt.Printf("  -- fnam: %s fldv: %v\n", fnam, fldv)
+			ftyp, ok := fldvMap["typ"]
+			if !ok {return db, fmt.Errorf("dbTable %s no typ defined for el %s", tblNam, fnam)}
+			fldEl.fldtyp = ftyp.(string)
+			fldatts := make([]string, 0, 24)
+			fattsv, ok := fldvMap["att"]
+			if ok {
+//				fmt.Printf("    - fldatts: %v\n", fattsv)
+				fattsRaw := fattsv.([]any)
+				for _, fldatt := range fattsRaw {
+					fldattStr := fldatt.(string)
+					fldatts = append(fldatts, fldattStr)
+				}
+			}
+			fldEl.fldattList = fldatts
 			flds = append(flds, fldEl)
 		}
 		dbTbl := dbTable{name: tblNam, fldList: flds}
@@ -163,8 +178,9 @@ func PrintDb(db dbData) {
 		fmt.Printf("  Table: %s\n", dbTbl.name)
 		for _, fld := range dbTbl.fldList {
 			fmt.Printf("     fld: %-10s typ: %-15s att: ", fld.fldnam, fld.fldtyp)
-			for _, fatt :=range fld.fldattList {
-				fmt.Printf("%s,", fatt)
+			for atNum, fatt :=range fld.fldattList {
+				fmt.Printf("%s", fatt)
+				if atNum < len(fld.fldattList) -1 {fmt.Printf(",")}
 			}
 			fmt.Printf("\n")
 		}
@@ -333,12 +349,18 @@ func (db *dbData) BldTbls() (err error) {
 		q.WriteString(strings.ToLower(tbl.name))
 		q.WriteString(" (")
 		// fields
-		for i:=0; i<len(tbl.fldList); i++ {
-			q.WriteString(tbl.fldList[i].fldnam)
+		for ifld, fld := range tbl.fldList {
+			q.WriteString(fld.fldnam)
 			q.WriteString(" ")
-			q.WriteString(tbl.fldList[i].fldtyp)
-			if i<len(tbl.fldList)-1 {q.WriteString(",")}
+			q.WriteString(fld.fldtyp)
+			for _, attStr := range fld.fldattList {
+				q.WriteString(" ")
+				q.WriteString(attStr)
+			}
+			if ifld<len(tbl.fldList)-1 {q.WriteString(",")}
 		}
+
+
 		q.WriteString(" );")
 //		if db.Dbg {fmt.Printf("q: %s\n", q.String())}
         _, err := dbConn.Exec(db.dbInfo.dbctx, q.String())
