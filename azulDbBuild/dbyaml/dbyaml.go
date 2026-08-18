@@ -1,6 +1,7 @@
 package dbyaml
 
 // change db
+// change to V3
 
 import (
     "os"
@@ -35,18 +36,23 @@ type db struct {
 
 type dbTable struct {
     name string
-    fldList []string
-    propList []string
+    fldList []fld
+}
+
+type fld struct {
+	fldnam string
+	fldtyp string
+	fldattList []string
 }
 
 type layTable struct {
 	name string
-	cmds []string
 	layCmdList []layCmd
 }
 
 type layCmd struct {
 	nrows int
+	cmd string
 	rows []rowDesc
 }
 
@@ -88,28 +94,16 @@ func RdYaml (yFil string) (db dbData, err error) {
 	layMap := layoutMapRaw.(map[string]any)
 
 	dbtab := make([]dbTable, 0, 24)
-	for nam, v := range dblMap {
+	for tblNam, v := range dblMap {
 //		fmt.Printf("name: %s, v: %v\n", nam, v)
 		fldMap := v.(map[string]any)
-		flds := make([]string,0, 24)
-		props := make([]string, 0, 24)
-		cnt:=0
-		for fk, fv := range fldMap {
-			cnt++
-//			fmt.Printf("  --%d: fk: %s fv: %v\n", cnt, fk, fv)
-			xval := fv.([]any)
-//			fmt.Printf("  --%d: fk: %s xval: %v\n", cnt, fk, xval)
-			flds = append(flds, fk)
-			props = append(props, xval[0].(string))
-/*
-			for i:=0; i< len(xval); i++ {
-				str:= xval[i].(string)
-				fmt.Printf(" %d: %s,", i, str)
-			}
-			fmt.Println()
-*/
+		flds := make([]fld, 0, 24)
+		for fnam, fldv := range fldMap {
+			fldEl := fld {fldnam: fnam}
+			fmt.Printf("  -- fnam: %s fldv: %v\n", fnam, fldv)
+			flds = append(flds, fldEl)
 		}
-		dbTbl := dbTable{name: nam, fldList: flds, propList: props}
+		dbTbl := dbTable{name: tblNam, fldList: flds}
 		dbtab = append(dbtab, dbTbl)
 	}
 	db.dbTbls = dbtab
@@ -118,14 +112,11 @@ func RdYaml (yFil string) (db dbData, err error) {
 	for nam, v := range layMap {
 //		fmt.Printf("name: %s, v: %v\n", nam, v)
 		cmdMap := v.(map[string]any)
-		cmdList := make([]string,0, 24)
 		layCmdValList := make([]layCmd,0, 24)
 		cnt:=0
-		for cmd, cv := range cmdMap {
+		for cmdStr, cv := range cmdMap {
 			cnt++
 //			fmt.Printf("  --%d: cmd: %s cv: %v\n", cnt, cmd, cv)
-			cmdList = append(cmdList,cmd)
-
 			layCmdValMap := cv.(map[string]any)
 //			fmt.Printf("  --%d: cmd: %s cv val: %v\n", cnt, cmd, layCmdValMap)
 
@@ -144,17 +135,18 @@ func RdYaml (yFil string) (db dbData, err error) {
 				rowDescVal := rowDesc{ numFlds: len(vlist), rnam: row, fields:rowList}
 				rowDescList = append(rowDescList, rowDescVal)
 			}
-			layCmdVal := layCmd{nrows: len(layCmdValMap), rows: rowDescList}
+			layCmdVal := layCmd{nrows: len(layCmdValMap), cmd: cmdStr , rows: rowDescList}
 			layCmdValList = append(layCmdValList, layCmdVal)
 		}
 //		dbTbl := dbTable{name: nam, fields: flds}
-		layTbl :=  layTable{name:nam, cmds: cmdList, layCmdList: layCmdValList}
+		layTbl :=  layTable{name:nam, layCmdList: layCmdValList}
 		layTab = append(layTab, layTbl)
 	}
 	db.dbTbls = dbtab
 	db.layTbls = layTab
 
 //	fmt.Printf("dblMap: %d loutMap: %d\n", len(dblMap), len(layMap))
+	PrintDb(db)
 	return db, nil
 }
 
@@ -167,24 +159,28 @@ func PrintDb(db dbData) {
 	fmt.Println("********************")
 	fmt.Println("***** db Tables *****")
 	fmt.Println("*********************")
-	for cnt, dbTbl := range db.dbTbls {
-		fmt.Printf("  Table %d: %s\n", cnt, dbTbl.name)
-		for ifld, fld := range dbTbl.fldList {
-			fmt.Printf("    field %2d: %-10s %-20s\n", ifld, fld, dbTbl.propList[ifld])
+	for _, dbTbl := range db.dbTbls {
+		fmt.Printf("  Table: %s\n", dbTbl.name)
+		for _, fld := range dbTbl.fldList {
+			fmt.Printf("     fld: %-10s typ: %-15s att: ", fld.fldnam, fld.fldtyp)
+			for _, fatt :=range fld.fldattList {
+				fmt.Printf("%s,", fatt)
+			}
+			fmt.Printf("\n")
 		}
 	}
 
 	fmt.Println("***** layout Tables *****")
-	for cnt, layTbl := range db.layTbls {
-		fmt.Printf("  Table %d: %s\n", cnt, layTbl.name)
-		for icmd, cmd := range layTbl.cmds {
-			fmt.Printf("    cmd %d: %-10s\n", icmd, cmd)
-			laycmd := layTbl.layCmdList[icmd]
-			for ir, row := range laycmd.rows {
-				fmt.Printf("      %d: %s\n", ir, row.rnam)
-				for ifd, fld:= range row.fields {
-					fmt.Printf("        fld %d: %s\n", ifd, fld)
+	for _, layTbl := range db.layTbls {
+		fmt.Printf("  Layout Table: %s\n", layTbl.name)
+		for _, lcmd := range layTbl.layCmdList {
+			fmt.Printf("    %-10s\n", lcmd.cmd)
+			for _, row := range lcmd.rows {
+				fmt.Printf("     %-5s: ", row.rnam)
+				for _, fld:= range row.fields {
+					fmt.Printf(" %s,", fld)
 				}
+				fmt.Printf("\n")
 			}
 			fmt.Println()
 		}
@@ -256,7 +252,7 @@ func (db *dbData)TstTbls() (err error) {
 
 			colFound := false
 			for _, fld := range tbl.fldList {
-				if strings.ToLower(fld) == columnName {
+				if strings.ToLower(fld.fldnam) == columnName {
 					colFound = true
 					break
 				}
@@ -338,9 +334,9 @@ func (db *dbData) BldTbls() (err error) {
 		q.WriteString(" (")
 		// fields
 		for i:=0; i<len(tbl.fldList); i++ {
-			q.WriteString(tbl.fldList[i])
+			q.WriteString(tbl.fldList[i].fldnam)
 			q.WriteString(" ")
-			q.WriteString(tbl.propList[i])
+			q.WriteString(tbl.fldList[i].fldtyp)
 			if i<len(tbl.fldList)-1 {q.WriteString(",")}
 		}
 		q.WriteString(" );")
