@@ -80,3 +80,24 @@ func Test_BldTbls(t *testing.T) {
     if err !=nil {t.Errorf("BldTbls failed: %v", err)}
 
 }
+
+func Test_bldGoCode(t *testing.T) {
+
+    yamlFilnam := "testDbAltV3"
+    db, err := RdYaml(yamlFilnam)
+    if err !=nil {t.Errorf("rdyaml failed: %v", err)}
+
+	err = DbInit(&db)
+    if err !=nil {
+		t.Errorf("DbInit failed: %v", err)
+	} else {
+		log.Printf("*** DbInit success ***\n")
+	}
+
+	err = db.BldGoCode()
+    if err !=nil {t.Errorf("BldGoCode failed: %v", err)}
+
+	err = db.BldGoTestCode()
+    if err !=nil {t.Errorf("BldGoTestCode failed: %v", err)}
+
+}

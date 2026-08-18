@@ -293,9 +293,6 @@ func (db *dbData)TstTbls() (err error) {
 
 func DbInit(db *dbData) (err error) {
 
-//    var q strings.Builder
-//    q.Grow(1024)
-
 	db.Dbg = true
 	bctx :=context.Background()
 	db.dbInfo.dbctx = bctx
@@ -369,3 +366,185 @@ func (db *dbData) BldTbls() (err error) {
 
 	return nil
 }
+
+func (db *dbData) BldGoCode() (err error) {
+
+    var q strings.Builder
+    q.Grow(1024)
+
+	dbConn := db.dbInfo.dbPool
+	if dbConn == nil {return fmt.Errorf("no dbPool")}
+
+	// open file
+	q.WriteString("../dbgo/")
+	q.WriteString(db.dbInfo.DB)
+	q.WriteString(".go")
+	goFilnam := q.String()
+	fmt.Printf("go Fil: %s\n", goFilnam)
+	goFil, err := os.Create(goFilnam)
+	if err != nil {return fmt.Errorf("cannot open go file %s: %v", goFilnam, err)}
+	defer goFil.Close()
+
+	goFil.WriteString("// golang  libary for db handler\n")
+	goFil.WriteString("\n")
+	goFil.WriteString("package dbgo\n")
+	goFil.WriteString("\n")
+
+    imp := `
+import (
+//    "os"
+    "fmt"
+//    "time"
+    "context"
+//    "strings"
+//  "strconv"
+
+//    "github.com/goccy/go-json"
+//    "github.com/jackc/pgx/v5"
+    "github.com/jackc/pgx/v5/pgxpool"
+)
+
+`
+    goFil.WriteString(imp)
+	goFil.WriteString("\n")
+
+	//type
+typDecl := `
+type dbgoObj struct {
+	dbPool *pgxpool.Pool
+	Dbg	bool
+	dbctx context.Context
+}
+`
+
+    goFil.WriteString(typDecl)
+	goFil.WriteString("\n")
+
+	dbStr := "const dbnam = \"" + db.dbInfo.DB + "\"\n"
+	goFil.WriteString(dbStr)
+	dbStr = "const dbuser = \"" + db.dbInfo.User + "\"\n"
+	goFil.WriteString(dbStr)
+	goFil.WriteString("\n")
+
+	// write dbinit
+dbInitStr := `
+func DbInit()(dbp *dbgoObj, err error) {
+
+	var db dbgoObj
+	db.Dbg = true
+	bctx :=context.Background()
+	db.dbctx = bctx
+
+
+    dbConnStr := fmt.Sprintf("host=/var/run/postgresql user=%s dbname=%s", dbuser, dbnam)
+	dbPool, err := pgxpool.New(bctx, dbConnStr)
+    if err != nil {return nil, fmt.Errorf("error -- Unable to connect to database %s: %v\n", dbnam, err)}
+    db.dbPool = dbPool
+	defer db.dbPool.Close()
+
+	err = dbPool.Ping(bctx)
+	if err != nil {return nil, fmt.Errorf("Unable to ping database: %v\n", err)}
+
+	return &db, nil
+}
+`
+    goFil.WriteString(dbInitStr)
+	goFil.WriteString("\n")
+
+
+
+/*
+	for _, tbl := range db.dbTbls {
+		q.Reset()
+		tblnam:= strings.ToLower(tbl.name)
+		//build add
+
+
+		// build update
+
+		//build delete
+
+
+		//build select
+
+		q.WriteString("select ")
+		// col nams
+		q.WriteString("from ")
+		q.WriteString(tblnam)
+
+
+	}
+*/
+	return nil
+}
+
+func (db *dbData) BldGoTestCode() (err error) {
+
+    var q strings.Builder
+    q.Grow(1024)
+
+	dbConn := db.dbInfo.dbPool
+	if dbConn == nil {return fmt.Errorf("no dbPool")}
+
+	// open file
+	q.WriteString("../dbgo/")
+	q.WriteString(db.dbInfo.DB)
+	q.WriteString("_test.go")
+	goFilnam := q.String()
+	fmt.Printf("go Fil: %s\n", goFilnam)
+	goFil, err := os.Create(goFilnam)
+	if err != nil {return fmt.Errorf("cannot open go file %s: %v", goFilnam, err)}
+	defer goFil.Close()
+
+	goFil.WriteString("// test for golang libary for db handler\n")
+	goFil.WriteString("\n")
+	goFil.WriteString("package dbgo\n")
+	goFil.WriteString("\n")
+
+   imp := `
+import (
+	"testing"
+)
+
+`
+    goFil.WriteString(imp)
+    goFil.WriteString("\n")
+
+	goFil.WriteString("func TestDBInit(t *testing.T) {\n")
+    goFil.WriteString("\n")
+	goFil.WriteString("db, err := DbInit()\n")
+	goFil.WriteString("if err !=nil {t.Errorf(\"error DBINIT: %v\", err)}\n")
+	goFil.WriteString("if db.dbPool ==nil {t.Errorf(\"error DBPool is nil!\")}\n")
+
+	goFil.WriteString("}\n")
+	return nil
+}
+
+
+func (db *dbData) BldJsCode() (err error) {
+
+    var q strings.Builder
+    q.Grow(1024)
+
+	dbConn := db.dbInfo.dbPool
+	if dbConn == nil {return fmt.Errorf("no dbPool")}
+
+	// open file
+	q.WriteString("../dbjs/")
+	q.WriteString(db.dbInfo.DB)
+	q.WriteString(".js")
+	jsFilnam := q.String()
+	fmt.Printf("js Fil: %s\n", jsFilnam)
+	jsFil, err := os.Create(jsFilnam)
+	if err != nil {return fmt.Errorf("cannot open go file %s: %v", jsFilnam, err)}
+	defer jsFil.Close()
+/*
+	for _, tbl := range db.dbTbls {
+		q.Reset()
+		tblnam:= strings.ToLower(tbl.name)
+
+	}
+*/
+	return nil
+}
+
