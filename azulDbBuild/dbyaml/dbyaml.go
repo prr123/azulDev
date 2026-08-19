@@ -414,6 +414,7 @@ type dbgoObj struct {
 	dbPool *pgxpool.Pool
 	Dbg	bool
 	dbctx context.Context
+	tbls map[string][]string
 }
 `
 
@@ -442,15 +443,24 @@ func DbInit()(dbp *dbgoObj, err error) {
     db.dbPool = dbPool
 	defer db.dbPool.Close()
 
-	err = dbPool.Ping(bctx)
-	if err != nil {return nil, fmt.Errorf("Unable to ping database: %v\n", err)}
-
 	return &db, nil
 }
 `
     goFil.WriteString(dbInitStr)
 	goFil.WriteString("\n")
 
+dbPoolTstStr := `
+func (db *dbgoObj) DbPoolTest()(err error) {
+
+	dbPool := db.dbPool
+	err = dbPool.Ping(db.dbctx)
+	if err != nil {return fmt.Errorf("Unable to ping database: %v\n", err)}
+
+	return nil
+}
+`
+    goFil.WriteString(dbPoolTstStr)
+	goFil.WriteString("\n")
 
 
 /*
