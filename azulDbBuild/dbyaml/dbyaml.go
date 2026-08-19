@@ -458,9 +458,14 @@ func DbInit()(db *dbgoObj, err error) {
 
 	// init
 	for _, tbl := range db.dbTbls {
-		q.WriteString("db.tbls[\"")
+		q.WriteString("    db.tbls[\"")
 		q.WriteString(tbl.name)
-		q.WriteString("\" = []string{}\n")
+		q.WriteString("\"] = []string{")
+		for fcnt, fld := range tbl.fldList {
+			q.WriteString(fld.fldnam)
+			if fcnt < len(tbl.fldList) -1 {q.WriteString(", ")}
+		}
+		q.WriteString("}\n")
 		goFil.WriteString(q.String())
 		q.Reset()
 	}
