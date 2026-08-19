@@ -430,8 +430,8 @@ type dbgoObj struct {
 	goFil.WriteString("\n")
 
 	// write dbinit
-dbInitStr := `
-func DbInit()(dbp *dbgoObj, err error) {
+	dbInitStr := `
+func DbInit()(db *dbgoObj, err error) {
 
 	var db dbgoObj
 	db.Dbg = true
@@ -448,7 +448,7 @@ func DbInit()(dbp *dbgoObj, err error) {
     goFil.WriteString(dbInitStr)
 	goFil.WriteString("\n")
 
-	q.WriteString("db.tbls = make(map[string][]string, ")
+	q.WriteString("    db.tbls = make(map[string][]string, ")
 	numtbls := strconv.Itoa(len(db.dbTbls))
 	q.WriteString(numtbls)
 	q.WriteString(")\n")
@@ -456,7 +456,17 @@ func DbInit()(dbp *dbgoObj, err error) {
 	q.Reset()
 	goFil.WriteString("\n")
 
-	goFil.WriteString("     return &db, nil\n}\n\n")
+	// init
+	for _, tbl := range db.dbTbls {
+		q.WriteString("db.tbls[\"")
+		q.WriteString(tbl.name)
+		q.WriteString("\" = []string{}\n")
+		goFil.WriteString(q.String())
+		q.Reset()
+	}
+	goFil.WriteString("\n")
+
+	goFil.WriteString("    return &db, nil\n}\n\n")
 
 
 dbPoolTstStr := `
