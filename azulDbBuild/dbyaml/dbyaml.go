@@ -431,7 +431,7 @@ type dbgoObj struct {
 
 	// write dbinit
 	dbInitStr := `
-func DbInit()(db *dbgoObj, err error) {
+func DbInit()(dbp *dbgoObj, err error) {
 
 	var db dbgoObj
 	db.Dbg = true
@@ -462,7 +462,9 @@ func DbInit()(db *dbgoObj, err error) {
 		q.WriteString(tbl.name)
 		q.WriteString("\"] = []string{")
 		for fcnt, fld := range tbl.fldList {
+			q.WriteString("\"")
 			q.WriteString(fld.fldnam)
+			q.WriteString("\"")
 			if fcnt < len(tbl.fldList) -1 {q.WriteString(", ")}
 		}
 		q.WriteString("}\n")
