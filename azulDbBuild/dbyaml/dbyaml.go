@@ -401,7 +401,7 @@ import (
 //    "strings"
 //  "strconv"
 
-//    "github.com/goccy/go-json"
+    "github.com/goccy/go-json"
 //    "github.com/jackc/pgx/v5"
     "github.com/jackc/pgx/v5/pgxpool"
 )
@@ -490,8 +490,33 @@ func (db *dbgoObj) DbPoolTest()(err error) {
 	goFil.WriteString("\n")
 
 cmdParStr := `
-func (db *dbgoObj) DbCmdParse(cmd string)(err error) {
+func (db *dbgoObj) DbCmdParse(clientCmdStr string)(err error) {
 
+	cmdList := []string{"add","upd","sel","del"}
+
+	cmdMap := make(map[string]string, 24)
+
+	err = json.Unmarshal([]byte(clientCmdStr), &cmdMap)
+	if err != nil {return fmt.Errorf("Unmarshal: %v", err)}
+
+	tblnam, ok := cmdMap["tbl"]
+	if !ok {return fmt.Errorf("no tbl from Client")}
+
+	_, tok := db.tbls[tblnam]
+	if !tok {return fmt.Errorf("invalid tablename: %s", tblnam)}
+
+	cmd, ok := cmdMap["cmd"]
+	if !ok {return fmt.Errorf("no cmd from Client")}
+
+	found := false
+	for _, cmdl := range cmdList {
+		if cmd == cmdl {
+			found = true
+			break
+		}
+	}
+
+	if !found {return fmt.Errorf("illegal cmd: %s", cmd)}
 
 	return nil
 }
