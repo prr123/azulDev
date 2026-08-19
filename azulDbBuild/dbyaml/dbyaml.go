@@ -10,7 +10,7 @@ import (
 //    "time"
     "context"
     "strings"
-//  "strconv"
+	"strconv"
 
 	"github.com/goccy/go-yaml"
 //    "github.com/goccy/go-json"
@@ -380,7 +380,9 @@ func (db *dbData) BldGoCode() (err error) {
 	q.WriteString(db.dbInfo.DB)
 	q.WriteString(".go")
 	goFilnam := q.String()
-	fmt.Printf("go Fil: %s\n", goFilnam)
+	q.Reset()
+
+//	fmt.Printf("go Fil: %s\n", goFilnam)
 	goFil, err := os.Create(goFilnam)
 	if err != nil {return fmt.Errorf("cannot open go file %s: %v", goFilnam, err)}
 	defer goFil.Close()
@@ -442,12 +444,20 @@ func DbInit()(dbp *dbgoObj, err error) {
     if err != nil {return nil, fmt.Errorf("error -- Unable to connect to database %s: %v\n", dbnam, err)}
     db.dbPool = dbPool
 	defer db.dbPool.Close()
-
-	return &db, nil
-}
 `
     goFil.WriteString(dbInitStr)
 	goFil.WriteString("\n")
+
+	q.WriteString("    db.tbls = make(map[string][]string, ")
+	numtbls := strconv.Itoa(len(db.dbTbls))
+	q.WriteString(numtbls)
+	q.WriteString(")\n")
+	goFil.WriteString(q.String())
+	q.Reset()
+	goFil.WriteString("\n")
+
+	goFil.WriteString("    return &db, nil\n}\n\n")
+
 
 dbPoolTstStr := `
 func (db *dbgoObj) DbPoolTest()(err error) {
