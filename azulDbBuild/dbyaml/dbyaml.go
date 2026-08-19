@@ -380,7 +380,9 @@ func (db *dbData) BldGoCode() (err error) {
 	q.WriteString(db.dbInfo.DB)
 	q.WriteString(".go")
 	goFilnam := q.String()
-	fmt.Printf("go Fil: %s\n", goFilnam)
+//	fmt.Printf("go Fil: %s\n", goFilnam)
+	q.Reset()
+
 	goFil, err := os.Create(goFilnam)
 	if err != nil {return fmt.Errorf("cannot open go file %s: %v", goFilnam, err)}
 	defer goFil.Close()
@@ -443,8 +445,10 @@ func DbInit()(dbp *dbgoObj, err error) {
     db.dbPool = dbPool
 	defer db.dbPool.Close()
 `
-	q.Reset()
-	q.WriteString("db.tbls = make(map[string][]string, 0,")
+    goFil.WriteString(dbInitStr)
+	goFil.WriteString("\n")
+
+	q.WriteString("db.tbls = make(map[string][]string, ")
 	numtbls := strconv.Itoa(len(db.dbTbls))
 	q.WriteString(numtbls)
 	q.WriteString(")\n")
@@ -454,8 +458,6 @@ func DbInit()(dbp *dbgoObj, err error) {
 
 	goFil.WriteString("     return &db, nil\n}\n\n")
 
-    goFil.WriteString(dbInitStr)
-	goFil.WriteString("\n")
 
 dbPoolTstStr := `
 func (db *dbgoObj) DbPoolTest()(err error) {
@@ -470,6 +472,15 @@ func (db *dbgoObj) DbPoolTest()(err error) {
     goFil.WriteString(dbPoolTstStr)
 	goFil.WriteString("\n")
 
+cmdParStr := `
+func (db *dbgoObj) DbCmdParse(cmd string)(err error) {
+
+
+	return nil
+}
+`
+    goFil.WriteString(cmdParStr)
+	goFil.WriteString("\n")
 
 /*
 	for _, tbl := range db.layTbls {
