@@ -443,7 +443,7 @@ func DbInit()(dbp *dbgoObj, err error) {
 	dbPool, err := pgxpool.New(bctx, dbConnStr)
     if err != nil {return nil, fmt.Errorf("error -- Unable to connect to database %s: %v\n", dbnam, err)}
     db.dbPool = dbPool
-	defer db.dbPool.Close()
+//	defer db.dbPool.Close()
 `
     goFil.WriteString(dbInitStr)
 	goFil.WriteString("\n")
@@ -477,7 +477,7 @@ func DbInit()(dbp *dbgoObj, err error) {
 
 
 dbPoolTstStr := `
-func (db *dbgoObj) DbPoolTest()(err error) {
+func (db *dbgoObj) DbPoolCheck()(err error) {
 
 	dbPool := db.dbPool
 	err = dbPool.Ping(db.dbctx)
@@ -585,11 +585,30 @@ import (
 
 	goFil.WriteString("func TestDBInit(t *testing.T) {\n")
     goFil.WriteString("\n")
-	goFil.WriteString("db, err := DbInit()\n")
-	goFil.WriteString("if err !=nil {t.Errorf(\"error DBINIT: %v\", err)}\n")
-	goFil.WriteString("if db.dbPool ==nil {t.Errorf(\"error DBPool is nil!\")}\n")
+	goFil.WriteString("  db, err := DbInit()\n")
+	goFil.WriteString("  if err !=nil {t.Errorf(\"error DBINIT: %v\", err)}\n")
+	goFil.WriteString("  if db.dbPool ==nil {t.Errorf(\"error DBPool is nil!\")}\n")
+    goFil.WriteString("\n")
+	goFil.WriteString("  err = db.DbPoolCheck()\n")
+	goFil.WriteString("  if err !=nil {t.Errorf(\"error DbPoolCheck: %v\", err)}\n")
+	goFil.WriteString("}\n\n")
 
-	goFil.WriteString("}\n")
+	// check BldGoCode
+	goFil.WriteString("func TestDBCmdParse(t *testing.T) {\n")
+
+	goFil.WriteString("  db, err := DbInit()\n")
+	goFil.WriteString("  if err !=nil {t.Errorf(\"error DbInit: %v\", err)}\n")
+    goFil.WriteString("\n")
+	jsStr := `{"tbl":"Person", "cmd":"sel"}`
+
+	goFil.WriteString("  jsonCmdStr := `" + jsStr + "`\n")
+//    goFil.WriteString("\n")
+	goFil.WriteString("  err = db.DbCmdParse(jsonCmdStr)\n")
+	goFil.WriteString("  if err !=nil {t.Errorf(\"error DBCmdParse: %v\", err)}\n")
+    goFil.WriteString("\n")
+
+	goFil.WriteString("}\n\n")
+
 	return nil
 }
 
