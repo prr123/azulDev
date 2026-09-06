@@ -518,6 +518,27 @@ func (db *dbgoObj) DbCmdParse(clientCmdStr string)(err error) {
 
 	if !found {return fmt.Errorf("illegal cmd: %s", cmd)}
 
+	switch cmd {
+		case "add":
+			db.DbCmdAdd(cmdMap)
+		case "upd":
+
+		case "sel":
+
+		case "del":
+
+		default:
+			return fmt.Errorf("illegal cmd in switch: %s", cmd)
+	}
+
+	return nil
+}
+
+func (db *dbgoObj) DbCmdAdd(cmdMap map[string]string)(err error) {
+
+	for k,v := range cmdMap {
+		fmt.Printf("   %s->%s\n", k, v)
+	}
 	return nil
 }
 `
@@ -599,12 +620,18 @@ import (
 	goFil.WriteString("  db, err := DbInit()\n")
 	goFil.WriteString("  if err !=nil {t.Errorf(\"error DbInit: %v\", err)}\n")
     goFil.WriteString("\n")
-	jsStr := `{"tbl":"Person", "cmd":"sel"}`
 
-	goFil.WriteString("  jsonCmdStr := `" + jsStr + "`\n")
-//    goFil.WriteString("\n")
-	goFil.WriteString("  err = db.DbCmdParse(jsonCmdStr)\n")
-	goFil.WriteString("  if err !=nil {t.Errorf(\"error DBCmdParse: %v\", err)}\n")
+	jsSelStr := `{"tbl":"Person", "cmd":"sel"}`
+	goFil.WriteString("  jsonCmdSelStr := `" + jsSelStr + "`\n")
+	goFil.WriteString("  err = db.DbCmdParse(jsonCmdSelStr)\n")
+	goFil.WriteString("  if err !=nil {t.Errorf(\"error DbCmdParse: %v\", err)}\n")
+    goFil.WriteString("\n")
+//	goFil.WriteString("}\n\n")
+
+	jsAddStr := `{"tbl":"Person", "cmd":"add", "first":"john", "last": "doe", "email": "joe@nothing.com"}`
+	goFil.WriteString("  jsonCmdAddStr := `" + jsAddStr + "`\n")
+	goFil.WriteString("  err = db.DbCmdParse(jsonCmdAddStr)\n")
+	goFil.WriteString("  if err !=nil {t.Errorf(\"error DbCmdParse: %v %s\", err, jsonCmdAddStr)}\n")
     goFil.WriteString("\n")
 
 	goFil.WriteString("}\n\n")
