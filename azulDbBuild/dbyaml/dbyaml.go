@@ -398,7 +398,7 @@ import (
     "fmt"
 //    "time"
     "context"
-//    "strings"
+    "strings"
 //  "strconv"
 
     "github.com/goccy/go-json"
@@ -427,6 +427,8 @@ type dbgoObj struct {
 	goFil.WriteString(dbStr)
 	dbStr = "const dbuser = \"" + db.dbInfo.User + "\"\n"
 	goFil.WriteString(dbStr)
+    dbStr = "var q strings.Builder"
+	goFil.WriteString(dbStr)
 	goFil.WriteString("\n")
 
 	// write dbinit
@@ -437,7 +439,7 @@ func DbInit()(dbp *dbgoObj, err error) {
 	db.Dbg = true
 	bctx :=context.Background()
 	db.dbctx = bctx
-
+	q.Grow(1024)
 
     dbConnStr := fmt.Sprintf("host=/var/run/postgresql user=%s dbname=%s", dbuser, dbnam)
 	dbPool, err := pgxpool.New(bctx, dbConnStr)
@@ -520,10 +522,14 @@ func (db *dbgoObj) DbCmdParse(clientCmdStr string)(err error) {
 
 	switch cmd {
 		case "add":
-			db.DbCmdAdd(cmdMap)
+			err = db.DbCmdAdd(cmdMap)
+			if err != nil {return fmt.Errorf("add: %v\n",err)}
 		case "upd":
-
+			err = db.DbCmdUpd(cmdMap)
+			if err != nil {return fmt.Errorf("upd: %v\n",err)}
 		case "sel":
+			err =db.DbCmdSel(cmdMap)
+			if err != nil {return fmt.Errorf("sel: %v\n",err)}
 
 		case "del":
 
@@ -536,9 +542,52 @@ func (db *dbgoObj) DbCmdParse(clientCmdStr string)(err error) {
 
 func (db *dbgoObj) DbCmdAdd(cmdMap map[string]string)(err error) {
 
+	fmt.Printf("add\n")
 	for k,v := range cmdMap {
 		fmt.Printf("   %s->%s\n", k, v)
 	}
+	return nil
+}
+func (db *dbgoObj) DbCmdUpd(cmdMap map[string]string)(err error) {
+
+	fmt.Printf("upd\n")
+	for k,v := range cmdMap {
+		fmt.Printf("   %s->%s\n", k, v)
+	}
+	return nil
+}
+func (db *dbgoObj) DbCmdSel(cmdMap map[string]string)(err error) {
+
+	fmt.Printf("sel\n")
+	for k,v := range cmdMap {
+		fmt.Printf("   %s->%s\n", k, v)
+	}
+	fmt.Printf("sel\n")
+
+	q.Reset()
+	q.WriteString("select first, last, email from  ") 
+	q.WriteString(cmdMap["tbl"])
+//	q.WriteString(";")
+
+	pool := db.dbPool
+// db.dbInfo.dbctx
+	rows, err := pool.Query(db.dbctx, q.String())
+	if err != nil {return fmt.Errorf("sel query <%s>: %v",q.String(), err)}
+	defer rows.Close() // Always close rows to avoid connection leaks!
+
+	for rows.Next() {
+		var first, last, email string
+		if err := rows.Scan(&first, &last, &email); err != nil {
+			return fmt.Errorf("Row scan failed: %v", err)
+		}
+		fmt.Printf("  first: %s last: %s email: %s\n", first, last, email)
+	}
+
+	// Check for any errors encountered during iteration
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("sel error during row iteration: %v", err)
+	}
+
 	return nil
 }
 `
@@ -624,14 +673,19 @@ import (
 	jsSelStr := `{"tbl":"Person", "cmd":"sel"}`
 	goFil.WriteString("  jsonCmdSelStr := `" + jsSelStr + "`\n")
 	goFil.WriteString("  err = db.DbCmdParse(jsonCmdSelStr)\n")
-	goFil.WriteString("  if err !=nil {t.Errorf(\"error DbCmdParse: %v\", err)}\n")
+	goFil.WriteString("  if err !=nil {t.Errorf(\"error DbCmdParse: %v %s\", err, jsonCmdSelStr)}\n")
     goFil.WriteString("\n")
-//	goFil.WriteString("}\n\n")
 
 	jsAddStr := `{"tbl":"Person", "cmd":"add", "first":"john", "last": "doe", "email": "joe@nothing.com"}`
 	goFil.WriteString("  jsonCmdAddStr := `" + jsAddStr + "`\n")
 	goFil.WriteString("  err = db.DbCmdParse(jsonCmdAddStr)\n")
 	goFil.WriteString("  if err !=nil {t.Errorf(\"error DbCmdParse: %v %s\", err, jsonCmdAddStr)}\n")
+    goFil.WriteString("\n")
+
+	jsUpdStr := `{"tbl":"Person", "cmd":"upd", "first":"joe", "last":"doe2"}`
+	goFil.WriteString("  jsonCmdUpdStr := `" + jsUpdStr + "`\n")
+	goFil.WriteString("  err = db.DbCmdParse(jsonCmdUpdStr)\n")
+	goFil.WriteString("  if err !=nil {t.Errorf(\"error DbCmdParse: %v %s\", err, jsonCmdUpdStr)}\n")
     goFil.WriteString("\n")
 
 	goFil.WriteString("}\n\n")
