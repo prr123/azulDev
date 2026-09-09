@@ -419,9 +419,34 @@ type dbgoObj struct {
 	tbls map[string][]string
 }
 `
-
     goFil.WriteString(typDecl)
 	goFil.WriteString("\n")
+
+	for _, dbTable := range db.dbTbls {
+		tblnam := dbTable.name
+		fmt.Printf(" -- %s\n", tblnam)
+		q.Reset()
+		q.WriteString("type ")
+		q.WriteString(tblnam)
+		q.WriteString("_db struct {\n")
+		q.WriteString("  id int\n")
+		goFil.WriteString(q.String())
+
+		for _, field := range dbTable.fldList {
+			q.Reset()
+			fnam := field.fldnam
+			fmt.Printf(" ---- %s\n", fnam)
+			q.WriteString("  ")
+			q.WriteString(fnam)
+			q.WriteString(" ")
+			q.WriteString(field.fldtyp)
+			q.WriteString("\n")
+			goFil.WriteString(q.String())
+		}
+
+//		q.WriteString("}\n\n")
+		goFil.WriteString("}\n\n")
+	}
 
 	dbStr := "const dbnam = \"" + db.dbInfo.DB + "\"\n"
 	goFil.WriteString(dbStr)
