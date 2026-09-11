@@ -396,7 +396,7 @@ func (db *dbData) BldGoCode() (err error) {
 import (
 //    "os"
     "fmt"
-//    "time"
+    _ "time"
     "context"
     "strings"
 //  "strconv"
@@ -429,7 +429,7 @@ type dbgoObj struct {
 		q.WriteString("type ")
 		q.WriteString(tblnam)
 		q.WriteString("_db struct {\n")
-		q.WriteString("  id int\n")
+//		q.WriteString("  id int\n")
 		goFil.WriteString(q.String())
 
 		for _, field := range dbTable.fldList {
@@ -439,7 +439,9 @@ type dbgoObj struct {
 			q.WriteString("  ")
 			q.WriteString(fnam)
 			q.WriteString(" ")
-			q.WriteString(field.fldtyp)
+			gotyp, err := PgDatCvt(field.fldtyp)
+			if err != nil {return fmt.Errorf("tbl: %s typ %s conv: %v", tblnam, field.fldtyp, err)}
+			q.WriteString(gotyp)
 			q.WriteString("\n")
 			goFil.WriteString(q.String())
 		}
@@ -645,6 +647,33 @@ func (db *dbgoObj) DbCmdSel(cmdMap map[string]string)(err error) {
 */
 	return nil
 }
+
+//zz
+func PgDatCvt (pgtyp string) (gotyp string, err error) {
+
+
+		sh := pgtyp[:3]
+		switch sh {
+		case "int":
+			gotyp = "int"
+		case "dat":
+			gotyp = "time.Time"
+		case "ser":
+			gotyp = "int"
+		case "var", "tex":
+			gotyp = "string"
+		case "boo":
+			gotyp = "bool"
+		default:
+			return gotyp, fmt.Errorf("Conv %s\n", sh)
+
+		}
+
+		return gotyp, nil
+
+}
+
+
 
 func (db *dbData) BldGoTestCode() (err error) {
 
