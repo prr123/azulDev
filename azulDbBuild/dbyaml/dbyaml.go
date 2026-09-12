@@ -397,7 +397,7 @@ func (db *dbData) BldGoCode() (err error) {
 import (
 //    "os"
     "fmt"
-    _ "time"
+    "time"
     "context"
     "strings"
 //  "strconv"
@@ -484,6 +484,7 @@ func DbInit()(dbp *dbgoObj, err error) {
     goFil.WriteString(dbInitStr)
 	goFil.WriteString("\n")
 
+	q.Reset()
 	q.WriteString("    db.tbls = make(map[string][]string, ")
 	numtbls := strconv.Itoa(len(db.dbTbls))
 	q.WriteString(numtbls)
@@ -580,16 +581,34 @@ func (db *dbgoObj) DbCmdAdd(cmdMap map[string]string)(err error) {
 	for k,v := range cmdMap {
 		fmt.Printf("   %s->%s\n", k, v)
 	}
+
+	q.Reset()
+	q.WriteString("Insert into ")
+	q.WriteString(cmdMap["tbl"])
+	q.WriteString(" (")
+
+	q.WriteString(" ) values (")
+
+	q.WriteString(" )")
+//	q.WriteString(" );\n")
+
+	fmt.Printf("add query: %s\n", q.String())
+
 	return nil
 }
+
 func (db *dbgoObj) DbCmdUpd(cmdMap map[string]string)(err error) {
 
 	fmt.Printf("upd\n")
 	for k,v := range cmdMap {
 		fmt.Printf("   %s->%s\n", k, v)
 	}
+
+	q.Reset()
+
 	return nil
 }
+
 func (db *dbgoObj) DbCmdSel(cmdMap map[string]string)(err error) {
 
 	fmt.Printf("sel\n")
@@ -599,9 +618,29 @@ func (db *dbgoObj) DbCmdSel(cmdMap map[string]string)(err error) {
 	fmt.Printf("sel\n")
 
 	q.Reset()
-	q.WriteString("select first, last, email from  ") 
+
+	totLen := len(cmdMap)
+	cnt:= 0
+	q.WriteString("select ")
+// add parameters
+	for k, _  := range cmdMap {
+		cnt++
+	fmt.Printf("key %d: %s\n", cnt, k)
+		if k == "tbl" {continue}
+		if k == "cmd" {continue}
+		q.WriteString(k)
+		if cnt == totLen {
+			q.WriteString (" ")
+		} else {
+			q.WriteString(", ")
+		}
+	}
+	if totLen == 2 {q.WriteString("* ")}
+
+	q.WriteString("from  ") 
 	q.WriteString(cmdMap["tbl"])
 //	q.WriteString(";")
+	fmt.Printf("sel query: %s\n", q.String())
 
 	pool := db.dbPool
 // db.dbInfo.dbctx
@@ -609,6 +648,7 @@ func (db *dbgoObj) DbCmdSel(cmdMap map[string]string)(err error) {
 	if err != nil {return fmt.Errorf("sel query <%s>: %v",q.String(), err)}
 	defer rows.Close() // Always close rows to avoid connection leaks!
 
+/*
 	for rows.Next() {
 		var first, last, email string
 		if err := rows.Scan(&first, &last, &email); err != nil {
@@ -621,7 +661,7 @@ func (db *dbgoObj) DbCmdSel(cmdMap map[string]string)(err error) {
 	if err := rows.Err(); err != nil {
 		return fmt.Errorf("sel error during row iteration: %v", err)
 	}
-
+*/
 	return nil
 }
 `
@@ -742,7 +782,7 @@ import (
 	goFil.WriteString("  if err !=nil {t.Errorf(\"error DbInit: %v\", err)}\n")
     goFil.WriteString("\n")
 
-	jsSelStr := `{"tbl":"Person", "cmd":"sel"}`
+	jsSelStr := `{"tbl":"Person", "cmd":"sel", "first": "Joe", "last": "Doe", "email":"joe@test.com" }`
 	goFil.WriteString("  jsonCmdSelStr := `" + jsSelStr + "`\n")
 	goFil.WriteString("  err = db.DbCmdParse(jsonCmdSelStr)\n")
 	goFil.WriteString("  if err !=nil {t.Errorf(\"error DbCmdParse: %v %s\", err, jsonCmdSelStr)}\n")
