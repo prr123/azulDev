@@ -788,6 +788,12 @@ import (
 	goFil.WriteString("  if err !=nil {t.Errorf(\"error DbCmdParse: %v %s\", err, jsonCmdSelStr)}\n")
     goFil.WriteString("\n")
 
+	jsSelStr = `{"tbl":"Person", "cmd":"sel"}`
+	goFil.WriteString("  jsonCmdSelStr = `" + jsSelStr + "`\n")
+	goFil.WriteString("  err = db.DbCmdParse(jsonCmdSelStr)\n")
+	goFil.WriteString("  if err !=nil {t.Errorf(\"error DbCmdParse: %v %s\", err, jsonCmdSelStr)}\n")
+    goFil.WriteString("\n")
+
 	jsAddStr := `{"tbl":"Person", "cmd":"add", "first":"john", "last": "doe", "email": "joe@nothing.com"}`
 	goFil.WriteString("  jsonCmdAddStr := `" + jsAddStr + "`\n")
 	goFil.WriteString("  err = db.DbCmdParse(jsonCmdAddStr)\n")
