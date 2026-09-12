@@ -11,6 +11,7 @@ import (
     "context"
     "strings"
 	"strconv"
+//	"bytes"
 
 	"github.com/goccy/go-yaml"
 //    "github.com/goccy/go-json"
@@ -434,14 +435,20 @@ type dbgoObj struct {
 
 		for _, field := range dbTable.fldList {
 			q.Reset()
-			fnam := field.fldnam
-			fmt.Printf(" ---- %s\n", fnam)
+//			fnam := field.fldnam
 			q.WriteString("  ")
+			fnam , err := CreJsonNam(field.fldnam)
+			if err != nil {return fmt.Errorf("tbl: %s field %s conv: %v", tblnam, field.fldnam, err)}
+			fmt.Printf(" ---- %s\n", fnam)
 			q.WriteString(fnam)
 			q.WriteString(" ")
 			gotyp, err := PgDatCvt(field.fldtyp)
 			if err != nil {return fmt.Errorf("tbl: %s typ %s conv: %v", tblnam, field.fldtyp, err)}
 			q.WriteString(gotyp)
+			q.WriteString(" `json: \"")
+			q.WriteString(field.fldnam)
+			q.WriteString("\"`")
+
 			q.WriteString("\n")
 			goFil.WriteString(q.String())
 		}
@@ -651,11 +658,15 @@ func (db *dbgoObj) DbCmdSel(cmdMap map[string]string)(err error) {
 //zz
 func PgDatCvt (pgtyp string) (gotyp string, err error) {
 
-
 		sh := pgtyp[:3]
 		switch sh {
+
 		case "int":
 			gotyp = "int"
+		case "big":
+			gotyp = "int64"
+		case "rea":
+			gotyp = "float"
 		case "dat":
 			gotyp = "time.Time"
 		case "ser":
@@ -664,16 +675,23 @@ func PgDatCvt (pgtyp string) (gotyp string, err error) {
 			gotyp = "string"
 		case "boo":
 			gotyp = "bool"
+
 		default:
 			return gotyp, fmt.Errorf("Conv %s\n", sh)
 
 		}
-
 		return gotyp, nil
-
 }
 
+func CreJsonNam (fldnam string)(jsNam string, err error) {
 
+	jsNamB := []byte(fldnam)
+	if fldnam[0] >= 'a' && fldnam[0] <= 'z' {
+		jsNamB[0] = jsNamB[0] - ('a' - 'A')
+	}
+	jsNam = string(jsNamB)
+	return jsNam, nil
+}
 
 func (db *dbData) BldGoTestCode() (err error) {
 
